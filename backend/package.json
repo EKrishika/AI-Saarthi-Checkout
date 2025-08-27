@@ -1,0 +1,22 @@
+{
+  "name": "signet-backend",
+  "version": "1.0.0",
+  "description": "Signet — a conversational checkout agent for agentic commerce, built on Razorpay test APIs (Razorpay AI Buildathon, Track 1: AI Growth & Agentic Commerce)",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "audit": "node scripts/show-audit.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "razorpay": "^2.9.4",
+    "uuid": "^9.0.1"
+  }
+}
