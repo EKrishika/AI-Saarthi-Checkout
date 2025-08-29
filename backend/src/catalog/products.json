@@ -1,0 +1,78 @@
+{
+  "$schema_note": "AI-readable product catalog. Every field an agent needs to reason about a product — price in the smallest currency unit, stock, and a plain-language description — is explicit rather than implied, so both this agent and any third-party AI shopping agent can consume it without scraping HTML.",
+  "currency": "INR",
+  "products": [
+    {
+      "id": "sku-001",
+      "name": "Aurora Wireless Earbuds",
+      "category": "audio",
+      "description": "Compact true-wireless earbuds with active noise cancellation, 30-hour case battery life, and IPX4 sweat resistance.",
+      "price_paise": 349900,
+      "stock": 42,
+      "tags": ["audio", "wireless", "anc", "under-5000"]
+    },
+    {
+      "id": "sku-002",
+      "name": "Kestrel Mechanical Keyboard",
+      "category": "accessories",
+      "description": "75% layout hot-swappable mechanical keyboard with hall-effect switches and per-key RGB.",
+      "price_paise": 799900,
+      "stock": 17,
+      "tags": ["keyboard", "mechanical", "desk-setup"]
+    },
+    {
+      "id": "sku-003",
+      "name": "Northlight Desk Lamp",
+      "category": "home-office",
+      "description": "Adjustable LED desk lamp with 5 color temperatures, USB-C passthrough charging, and a diffused anti-glare panel.",
+      "price_paise": 189900,
+      "stock": 63,
+      "tags": ["lighting", "desk-setup", "under-2000"]
+    },
+    {
+      "id": "sku-004",
+      "name": "Voyager 20L Backpack",
+      "category": "bags",
+      "description": "Weatherproof 20L daypack with a padded 15-inch laptop sleeve and a magnetic chest strap.",
+      "price_paise": 249900,
+      "stock": 30,
+      "tags": ["bag", "travel", "laptop"]
+    },
+    {
+      "id": "sku-005",
+      "name": "Halo Smart Mug",
+      "category": "lifestyle",
+      "description": "Temperature-controlled ceramic mug that holds a set drink temperature for up to 2 hours, app-controlled.",
+      "price_paise": 429900,
+      "stock": 12,
+      "tags": ["smart-home", "gift", "premium"]
+    },
+    {
+      "id": "sku-006",
+      "name": "Compass Portable SSD 1TB",
+      "category": "storage",
+      "description": "USB-C 1TB portable SSD rated for 1050MB/s reads, shock-resistant aluminium enclosure.",
+      "price_paise": 899900,
+      "stock": 25,
+      "tags": ["storage", "ssd", "productivity"]
+    },
+    {
+      "id": "sku-007",
+      "name": "Meridian Standing Desk Converter",
+      "category": "home-office",
+      "description": "Dual-tier standing desk converter, gas-spring height adjustment, fits up to a 32-inch monitor plus keyboard tray.",
+      "price_paise": 649900,
+      "stock": 9,
+      "tags": ["desk-setup", "ergonomics"]
+    },
+    {
+      "id": "sku-008",
+      "name": "Pulse Fitness Band",
+      "category": "wearables",
+      "description": "Lightweight fitness band with heart-rate and SpO2 tracking, 10-day battery, and sleep staging.",
+      "price_paise": 279900,
+      "stock": 55,
+      "tags": ["wearable", "fitness", "under-3000"]
+    }
+  ]
+}
