@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Signet — Delegated-Authority Commerce</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #12151d;
+    --panel-2: #181c26;
+    --border: #232836;
+    --border-soft: #1b1f2a;
+    --text: #eef1f6;
+    --muted: #8b93a3;
+    --dim: #646c7c;
+    --accent: #3f7dfb;
+    --accent-soft: rgba(63, 125, 251, 0.14);
+    --ok: #2fd07a;
+    --ok-soft: rgba(47, 208, 122, 0.12);
+    --warn: #f5b23d;
+    --warn-soft: rgba(245, 178, 61, 0.12);
+    --danger: #ff6b6b;
+    --danger-soft: rgba(255, 107, 107, 0.12);
+    --violet: #a78bfa;
+    --violet-soft: rgba(167, 139, 250, 0.13);
+    --r: 14px;
+    --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--font); background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 11px 20px; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #12161f 0%, #0d1016 100%);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(140deg, var(--accent), #7aa2ff);
+    display: grid; place-items: center; font-weight: 700; font-size: 17px; color: #fff;
+    box-shadow: 0 3px 14px rgba(63, 125, 251, 0.4);
+  }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  .brand .sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill {
+    font-size: 11px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel-2);
+    color: var(--muted); white-space: nowrap; font-weight: 500;
+  }
+  .pill.live { color: var(--ok); border-color: rgba(47,208,122,0.35); background: var(--ok-soft); }
+  .pill.live::before {
+    content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ok); margin-right: 6px; vertical-align: 1px; animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .pill code { font-family: var(--mono); font-size: 10.5px; color: var(--text); }
+  .ghost-btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 7px 13px; font-size: 12px; cursor: pointer;
+    font-family: inherit; font-weight: 500; transition: background 0.15s, border-color 0.15s;
+  }
+  .ghost-btn:hover { background: #1f2431; border-color: #2e3444; }
+
+  #setup-banner {
+    display: none; flex-shrink: 0; padding: 10px 20px;
+    background: var(--warn-soft); border-bottom: 1px solid rgba(245,178,61,0.3);
+    color: #ffd489; font-size: 12.5px; line-height: 1.5;
+  }
+  #setup-banner code { font-family: var(--mono); background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- tabs ---------- */
+  .tabbar {
+    display: flex; gap: 4px; padding: 9px 20px; flex-shrink: 0;
+    border-bottom: 1px solid var(--border); background: var(--bg);
+  }
+  .tab {
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+    font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+    border-radius: 9px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 7px;
+  }
+  .tab:hover { color: var(--text); background: var(--panel-2); }
+  .tab.active { color: var(--text); background: var(--panel-2); border-color: var(--border); }
+  .tab .tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+  .tab[data-view="chat"].active .tdot { background: var(--accent); }
+  .tab[data-view="unattended"].active .tdot { background: var(--violet); }
+  .tab[data-view="growth"].active .tdot { background: var(--ok); }
+
+  /* ---------- layout ---------- */
+  .layout { flex: 1; display: grid; grid-template-columns: minmax(0,1fr) 370px; overflow: hidden; }
+  .main-col { display: flex; flex-direction: column; min-width: 0; background: var(--bg); overflow: hidden; }
+  .view { display: none; flex: 1; flex-direction: column; min-height: 0; }
+  .view.active { display: flex; }
+
+  #messages, .scroll-pane {
+    flex: 1; overflow-y: auto; padding: 22px 24px 8px;
+    display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth;
+  }
+  ::-webkit-scrollbar { width: 9px; }
+  ::-webkit-scrollbar-thumb { background: #262c3a; border-radius: 99px; border: 3px solid var(--bg); }
+
+  .row { display: flex; flex-direction: column; max-width: 720px; width: 100%; }
+  .row.user { align-self: flex-end; align-items: flex-end; max-width: 560px; }
+  .row.agent { align-self: flex-start; align-items: flex-start; }
+  .bubble {
+    padding: 11px 15px; border-radius: var(--r); line-height: 1.55; font-size: 14.5px;
+    white-space: pre-wrap; word-wrap: break-word; animation: rise 0.28s cubic-bezier(.2,.7,.3,1);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .row.user .bubble {
+    background: linear-gradient(135deg, var(--accent), #5b8cff); color: #fff;
+    border-bottom-right-radius: 5px; box-shadow: 0 2px 12px rgba(63,125,251,0.25);
+  }
+  .row.agent .bubble { background: var(--panel-2); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+  .row.system { align-self: center; max-width: 640px; align-items: center; }
+  .row.system .bubble { background: transparent; color: var(--dim); font-size: 11.5px; text-align: center; padding: 2px; white-space: normal; }
+  .speaker { font-size: 10.5px; color: var(--dim); margin: 0 4px 5px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px;
+    padding: 4px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--panel);
+    color: var(--muted); animation: rise 0.25s ease both;
+  }
+  .chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+  .chip.success { color: #9fe9c2; border-color: rgba(47,208,122,0.3); background: var(--ok-soft); }
+  .chip.success .dot { background: var(--ok); }
+  .chip.rejected { color: #ffd489; border-color: rgba(245,178,61,0.35); background: var(--warn-soft); }
+  .chip.rejected .dot { background: var(--warn); }
+  .chip.error { color: #ffadad; border-color: rgba(255,107,107,0.35); background: var(--danger-soft); }
+  .chip.error .dot { background: var(--danger); }
+  .chip.running .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+
+  .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 9px; margin-top: 10px; }
+  .product { border: 1px solid var(--border); background: var(--panel); border-radius: 11px; padding: 11px 12px; animation: rise 0.3s ease both; }
+  .product .pname { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .product .pdesc { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .product .prow { display: flex; align-items: baseline; justify-content: space-between; margin-top: 9px; gap: 8px; }
+  .product .price { font-size: 14.5px; font-weight: 700; }
+  .product .stock, .product .sku { font-size: 10.5px; color: var(--dim); font-family: var(--mono); }
+  .product .sku { margin-top: 6px; font-size: 10px; }
+
+  .guardrail { margin-top: 10px; border: 1px solid rgba(245,178,61,0.4); background: var(--warn-soft); border-radius: 11px; padding: 11px 13px; animation: rise 0.3s ease both; }
+  .guardrail .gtitle { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--warn); font-weight: 700; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .guardrail .gcode { font-family: var(--mono); font-size: 10.5px; color: #ffd489; opacity: 0.85; }
+  .guardrail .gmsg { font-size: 12.5px; color: #ffe0ad; margin-top: 6px; line-height: 1.5; }
+
+  .pay-cta { display: flex; align-items: center; gap: 13px; margin-top: 11px; border: 1px solid rgba(47,208,122,0.35); background: var(--ok-soft); border-radius: 12px; padding: 13px 15px; animation: rise 0.35s ease both; }
+  .pay-cta .pinfo { flex: 1; min-width: 0; }
+  .pay-cta .plabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #7fdcaa; font-weight: 700; }
+  .pay-cta .pamt { font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .pay-cta a { background: var(--ok); color: #06210f; text-decoration: none; font-weight: 700; font-size: 13.5px; padding: 10px 18px; border-radius: 9px; white-space: nowrap; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 3px 14px rgba(47,208,122,0.3); }
+  .pay-cta a:hover { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(47,208,122,0.42); }
+
+  /* ---------- composer ---------- */
+  .composer-wrap { flex-shrink: 0; padding: 10px 24px 18px; border-top: 1px solid var(--border-soft); background: var(--bg); }
+  .suggestions { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+  .sugg { font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-family: inherit; transition: all 0.15s; }
+  .sugg:hover:not(:disabled) { border-style: solid; border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+  .sugg:disabled { opacity: 0.4; cursor: default; }
+  form#composer { display: flex; gap: 10px; }
+  #input { flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 11px; padding: 13px 15px; font-size: 14.5px; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; min-width: 0; }
+  #input::placeholder { color: var(--dim); }
+  #input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  #send { background: var(--accent); color: #fff; border: none; border-radius: 11px; padding: 0 24px; font-size: 14px; cursor: pointer; font-weight: 650; font-family: inherit; transition: background 0.15s, opacity 0.15s; }
+  #send:hover:not(:disabled) { background: #5b8cff; }
+  #send:disabled { opacity: 0.45; cursor: default; }
+
+  /* ---------- forms (mandate / growth) ---------- */
+  .card { border: 1px solid var(--border); background: var(--panel); border-radius: 13px; padding: 16px 17px; }
+  .card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 650; }
+  .card .lede { color: var(--muted); font-size: 12.5px; line-height: 1.55; margin: 0 0 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+  .field input[type=text], .field input[type=number] {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 9px 11px; font-size: 13.5px; font-family: inherit; min-width: 0;
+  }
+  .field input:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-soft); }
+  .field .hint { font-size: 10.5px; color: var(--dim); }
+  .cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cat {
+    font-size: 11.5px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+    font-family: inherit; transition: all 0.15s;
+  }
+  .cat.on { background: var(--violet-soft); border-color: rgba(167,139,250,0.5); color: #d8caff; }
+  .primary-btn {
+    background: var(--violet); color: #16092e; border: none; border-radius: 10px;
+    padding: 11px 18px; font-size: 13.5px; cursor: pointer; font-weight: 700; font-family: inherit;
+    transition: filter 0.15s, opacity 0.15s;
+  }
+  .primary-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .primary-btn:disabled { opacity: 0.45; cursor: default; }
+  .primary-btn.green { background: var(--ok); color: #06210f; }
+
+  /* ---------- mandate card ---------- */
+  .mandate {
+    border: 1px solid rgba(167,139,250,0.4); background: var(--violet-soft);
+    border-radius: 13px; padding: 14px 16px; animation: rise 0.3s ease both;
+  }
+  .mandate .mhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .mandate .mtitle { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--violet); font-weight: 700; }
+  .mandate .mid { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .mandate .mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; margin-top: 11px; }
+  .mandate .mcell .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); font-weight: 700; }
+  .mandate .mcell .v { font-size: 14px; font-weight: 650; margin-top: 2px; }
+  .mandate .sig { font-family: var(--mono); font-size: 10px; color: var(--dim); margin-top: 11px; word-break: break-all; }
+  .bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,0.09); margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width 0.4s; }
+
+  .step { border-left: 2px solid var(--border); padding: 4px 0 4px 12px; }
+  .step .sh { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); font-weight: 700; margin-bottom: 6px; }
+
+  .verdict { border-radius: 12px; padding: 13px 15px; border: 1px solid var(--border); animation: rise 0.3s ease both; }
+  .verdict.purchased { border-color: rgba(47,208,122,0.4); background: var(--ok-soft); }
+  .verdict.stopped { border-color: rgba(245,178,61,0.4); background: var(--warn-soft); }
+  .verdict .vt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .verdict.purchased .vt { color: var(--ok); }
+  .verdict.stopped .vt { color: var(--warn); }
+  .verdict .vb { font-size: 13px; margin-top: 6px; line-height: 1.55; color: var(--text); }
+
+  /* ---------- growth ---------- */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; }
+  .stat { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 13px 15px; }
+  .stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); font-weight: 700; }
+  .stat .v { font-size: 21px; font-weight: 700; margin-top: 4px; }
+  .stat.green .v { color: var(--ok); }
+  .abandoned { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 13px 15px; }
+  .abandoned .ah { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .abandoned .aid { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .tagpill { font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tagpill.high { background: var(--ok-soft); color: #7fdcaa; border: 1px solid rgba(47,208,122,0.35); }
+  .tagpill.normal { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+  .abandoned .aitems { font-size: 12.5px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+  .abandoned .aval { font-size: 16px; font-weight: 700; margin-top: 6px; }
+  .nudge { margin-top: 10px; border-left: 2px solid var(--ok); padding-left: 11px; font-size: 12.5px; color: #cfe9da; line-height: 1.55; font-style: italic; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar { border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
+  .sec { display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--border); }
+  .sec.grow { flex: 1; border-bottom: none; }
+  .sec h2 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    margin: 0; padding: 13px 16px 9px; font-weight: 700; display: flex;
+    align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;
+  }
+  .sec h2 .count { font-family: var(--mono); font-size: 10px; color: var(--dim); background: var(--panel-2); border: 1px solid var(--border); padding: 2px 7px; border-radius: 999px; letter-spacing: 0; text-transform: none; }
+  .verify-btn { font-size: 10px; padding: 3px 9px; border-radius: 999px; cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); color: var(--muted); font-family: inherit; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+  .verify-btn:hover:not(:disabled) { color: var(--text); border-color: #2e3444; }
+  .sidebar-body { padding: 0 16px 14px; overflow-y: auto; }
+  .empty { color: var(--dim); font-size: 12.5px; line-height: 1.5; padding: 2px 0 6px; }
+
+  #verify-result { margin: 0 16px 10px; border-radius: 10px; padding: 9px 11px; font-size: 11.5px; line-height: 1.5; display: none; animation: rise 0.3s ease both; }
+  #verify-result.ok { display: block; background: var(--ok-soft); border: 1px solid rgba(47,208,122,0.4); color: #9fe9c2; }
+  #verify-result.bad { display: block; background: var(--danger-soft); border: 1px solid rgba(255,107,107,0.45); color: #ffb3b3; }
+  #verify-result .vtitle { font-weight: 700; }
+  #verify-result code { font-family: var(--mono); font-size: 10.5px; }
+
+  .cart-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
+  .cart-item .cq { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .cart-item .cn { flex: 1; min-width: 0; }
+  .cart-item .cp { font-variant-numeric: tabular-nums; }
+  .cart-total { display: flex; justify-content: space-between; font-weight: 700; margin-top: 11px; font-size: 15px; }
+  .cart-total .amt { font-variant-numeric: tabular-nums; }
+  .cap-note { font-size: 10.5px; color: var(--dim); margin-top: 7px; font-family: var(--mono); }
+
+  .audit-entry { border-left: 2px solid var(--border); padding: 7px 0 7px 10px; margin-bottom: 3px; animation: slide 0.3s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+  .audit-entry.success { border-color: var(--ok); }
+  .audit-entry.rejected { border-color: var(--warn); }
+  .audit-entry.error { border-color: var(--danger); }
+  .audit-entry .atool { font-family: var(--mono); font-size: 11.5px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .audit-entry.success .atool { color: #9fe9c2; }
+  .audit-entry.rejected .atool { color: #ffd489; }
+  .audit-entry.error .atool { color: #ffadad; }
+  .audit-entry .ats { color: var(--dim); font-weight: 400; font-size: 10.5px; }
+  .audit-entry .ameta { color: var(--dim); font-size: 10.5px; font-family: var(--mono); margin-top: 3px; }
+  .audit-entry .ahash { color: var(--dim); font-size: 9.5px; font-family: var(--mono); margin-top: 3px; opacity: 0.75; }
+  .audit-entry .areason { color: var(--muted); font-size: 11.5px; margin-top: 5px; line-height: 1.45; font-style: italic; border-left: 2px solid var(--border); padding-left: 8px; }
+
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { display: none; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark">S</div>
+      <div>
+        <h1>Signet — Delegated-Authority Commerce</h1>
+        <div class="sub">Razorpay AI Buildathon · Track 1: AI Growth &amp; Agentic Commerce</div>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill live">TEST MODE</span>
+      <span class="pill" id="pill-model"><code>…</code></span>
+      <span class="pill" id="pill-caps">…</span>
+      <button class="ghost-btn" id="reset-btn">New session</button>
+    </div>
+  </header>
+
+  <div id="setup-banner"></div>
+
+  <div class="tabbar">
+    <button class="tab active" data-view="chat"><span class="tdot"></span>Assisted checkout</button>
+    <button class="tab" data-view="unattended"><span class="tdot"></span>Unattended run</button>
+    <button class="tab" data-view="growth"><span class="tdot"></span>Recovery</button>
+  </div>
+
+  <div class="layout">
+    <div class="main-col">
+
+      <!-- ============ ASSISTED CHAT ============ -->
+      <div class="view active" id="view-chat">
+        <div id="messages"></div>
+        <div class="composer-wrap">
+          <div class="suggestions" id="suggestions"></div>
+          <form id="composer">
+            <input id="input" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="Tell Signet what you're looking for…" />
+            <button id="send" type="submit">Send</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ============ UNATTENDED ============ -->
+      <div class="view" id="view-unattended">
+        <div class="scroll-pane">
+          <div class="card">
+            <h3>Grant the agent authority, then walk away</h3>
+            <p class="lede">
+              No human confirms this purchase. The agent's only authority is the signed mandate
+              below — re-verified in <code>guardrails.js</code> on every spend, so it cannot widen
+              its own limits. This is the case the caps actually exist for.
+            </p>
+
+            <div class="grid2">
+              <div class="field">
+                <label for="m-subject">On behalf of</label>
+                <input id="m-subject" type="text" value="Aisha" />
+              </div>
+              <div class="field">
+                <label for="m-goal">Goal</label>
+                <input id="m-goal" type="text" value="Buy noise-cancelling wireless earbuds" />
+              </div>
+              <div class="field">
+                <label for="m-total">Total budget (₹)</label>
+                <input id="m-total" type="number" min="1" value="8000" />
+              </div>
+              <div class="field">
+                <label for="m-order">Per-order cap (₹)</label>
+                <input id="m-order" type="number" min="1" value="5000" />
+              </div>
+              <div class="field">
+                <label for="m-txns">Max transactions</label>
+                <input id="m-txns" type="number" min="1" value="2" />
+              </div>
+              <div class="field">
+                <label for="m-ttl">Expires in (minutes)</label>
+                <input id="m-ttl" type="number" min="1" value="60" />
+              </div>
+            </div>
+
+            <div class="field" style="margin-top:12px">
+              <label>Categories this mandate covers</label>
+              <div class="cats" id="m-cats"></div>
+              <span class="hint">None selected = any category. Pick one to demo a scope violation.</span>
+            </div>
+
+            <div style="margin-top:15px; display:flex; gap:9px; flex-wrap:wrap">
+              <button class="primary-btn" id="run-btn">Issue mandate &amp; run unattended</button>
+              <button class="ghost-btn" id="clear-run-btn">Clear</button>
+            </div>
+          </div>
+
+          <div id="run-output"></div>
+        </div>
+      </div>
+
+      <!-- ============ GROWTH / RECOVERY ============ -->
+      <div class="view" id="view-growth">
+        <div class="scroll-pane">
+          <div class="card">
+            <h3>Recover the carts that didn't convert</h3>
+            <p class="lede">
+              A conversational funnel knows more than a page-based one: what the buyer asked for,
+              what got priced, and exactly which step they dropped at. Recovery can therefore be
+              specific — and hand back a live payment link instead of a link back into the funnel.
+            </p>
+            <div style="display:flex; gap:9px; align-items:flex-end; flex-wrap:wrap">
+              <div class="field" style="max-width:180px">
+                <label for="g-stale">Idle for at least (min)</label>
+                <input id="g-stale" type="number" min="0" value="0" />
+                <span class="hint">0 shows the session you just used.</span>
+              </div>
+              <button class="primary-btn green" id="scan-btn">Scan for abandoned carts</button>
+            </div>
+          </div>
+          <div id="growth-output"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ SIDEBAR ============ -->
+    <div class="sidebar">
+      <div class="sec">
+        <h2>Cart <span class="count" id="cart-count">0 items</span></h2>
+        <div class="sidebar-body" id="cart-body">
+          <div class="empty">Empty — ask Signet for a product.</div>
+        </div>
+      </div>
+      <div class="sec grow">
+        <h2>
+          Audit trail
+          <span style="display:flex;gap:6px;align-items:center">
+            <button class="verify-btn" id="verify-btn">Verify chain</button>
+            <span class="count" id="audit-count">0 calls</span>
+          </span>
+        </h2>
+        <div id="verify-result"></div>
+        <div class="sidebar-body" id="audit-body">
+          <div class="empty">Every tool call appears here as it happens — including any the guardrails blocked. Each entry is hash-chained to the one before it.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+var sessionId = 'session-' + Math.random().toString(36).slice(2, 10);
+var $ = function (id) { return document.getElementById(id); };
+var messagesEl = $('messages');
+var cartBodyEl = $('cart-body');
+var auditBodyEl = $('audit-body');
+var input = $('input');
+var sendBtn = $('send');
+
+var config = {};
+var busy = false;
+var auditSeen = 0;
+var auditSession = sessionId; // which session the audit panel is following
+
+var SUGGESTIONS = [
+  'I need wireless earbuds under 5000',
+  'Add 2 of those',
+  "What's in my cart?",
+  'Add 500 desk lamps',
+  'Checkout — name Aisha, phone +919876543210',
+  'Yes, go ahead'
+];
+
+function inr(paise) { return '₹' + Math.round(paise / 100).toLocaleString('en-IN'); }
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+/* ---------------- tabs ---------------- */
+
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+    tab.classList.add('active');
+    $('view-' + tab.dataset.view).classList.add('active');
+  });
+});
+
+/* ---------------- chat rendering ---------------- */
+
+function scrollDown() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+function addRow(role, label) {
+  var row = el('div', 'row ' + role);
+  if (label) row.appendChild(el('div', 'speaker', label));
+  messagesEl.appendChild(row);
+  scrollDown();
+  return row;
+}
+
+function addBubble(role, text, label) {
+  var row = addRow(role, label);
+  row.appendChild(el('div', 'bubble', text));
+  scrollDown();
+  return row;
+}
+
+function makeChip(tool, state) {
+  var chip = el('div', 'chip ' + state);
+  chip.appendChild(el('span', 'dot'));
+  chip.appendChild(document.createTextNode(tool));
+  return chip;
+}
+
+function renderProducts(container, products) {
+  if (!products || !products.length) return;
+  var grid = el('div', 'products');
+  products.slice(0, 6).forEach(function (p) {
+    var card = el('div', 'product');
+    card.appendChild(el('div', 'pname', p.name));
+    card.appendChild(el('div', 'pdesc', p.description || ''));
+    var prow = el('div', 'prow');
+    prow.appendChild(el('span', 'price', inr(p.price_paise)));
+    prow.appendChild(el('span', 'stock', p.stock + ' in stock'));
+    card.appendChild(prow);
+    card.appendChild(el('div', 'sku', p.id));
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+function renderGuardrail(container, call) {
+  var box = el('div', 'guardrail');
+  var title = el('div', 'gtitle');
+  title.appendChild(document.createTextNode('⛔ Guardrail blocked this action'));
+  title.appendChild(el('span', 'gcode', call.code || 'REJECTED'));
+  box.appendChild(title);
+  box.appendChild(el('div', 'gmsg', call.message || 'The action was rejected before it could take effect.'));
+  container.appendChild(box);
+}
+
+function renderPayCta(container, order) {
+  var box = el('div', 'pay-cta');
+  var info = el('div', 'pinfo');
+  var by = order.authority && order.authority.authority === 'mandate'
+    ? 'Razorpay payment link · authorised by mandate'
+    : 'Razorpay payment link · test mode';
+  info.appendChild(el('div', 'plabel', by));
+  info.appendChild(el('div', 'pamt', inr(order.totalPaise)));
+  var link = el('a', null, 'Pay now →');
+  link.href = order.shortUrl;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  box.appendChild(info);
+  box.appendChild(link);
+  container.appendChild(box);
+}
+
+/* ---------------- cart ---------------- */
+
+function renderCart(cart, order) {
+  var items = cart || [];
+  var qty = items.reduce(function (n, i) { return n + (i.quantity || 0); }, 0);
+  $('cart-count').textContent = qty + (qty === 1 ? ' item' : ' items');
+
+  if (!items.length) {
+    cartBodyEl.textContent = '';
+    cartBodyEl.appendChild(el('div', 'empty', order && order.shortUrl
+      ? 'Order placed — payment link created.'
+      : 'Empty — ask Signet for a product.'));
+    return;
+  }
+
+  cartBodyEl.textContent = '';
+  var total = 0;
+  items.forEach(function (item) {
+    var row = el('div', 'cart-item');
+    row.appendChild(el('span', 'cq', (item.quantity || 0) + '×'));
+    row.appendChild(el('span', 'cn', item.name || item.productId));
+    row.appendChild(el('span', 'cp', inr(item.lineTotalPaise || 0)));
+    cartBodyEl.appendChild(row);
+    total += item.lineTotalPaise || 0;
+  });
+
+  var tot = el('div', 'cart-total');
+  tot.appendChild(el('span', null, 'Total'));
+  tot.appendChild(el('span', 'amt', inr(total)));
+  cartBodyEl.appendChild(tot);
+
+  if (config.guardrails) {
+    cartBodyEl.appendChild(el('div', 'cap-note', 'merchant cap: ' + inr(config.guardrails.maxOrderValueInr * 100) + ' / order'));
+  }
+}
+
+/* ---------------- audit trail ---------------- */
+
+function resetAuditPanel(followSession) {
+  auditSession = followSession;
+  auditSeen = 0;
+  auditBodyEl.textContent = '';
+  auditBodyEl.appendChild(el('div', 'empty', 'Waiting for the agent to act…'));
+  $('audit-count').textContent = '0 calls';
+  $('verify-result').className = '';
+}
+
+function refreshAudit() {
+  return fetch('/api/audit/' + auditSession)
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      var entries = data.entries || [];
+      if (entries.length === auditSeen) return;
+
+      var fresh = entries.slice(auditSeen);
+      auditSeen = entries.length;
+      if (auditBodyEl.querySelector('.empty')) auditBodyEl.textContent = '';
+
+      fresh.reverse().forEach(function (e) {
+        var div = el('div', 'audit-entry ' + (e.outcome || 'success'));
+        var head = el('div', 'atool');
+        head.appendChild(el('span', null, e.tool));
+        head.appendChild(el('span', 'ats', new Date(e.ts).toLocaleTimeString()));
+        div.appendChild(head);
+        div.appendChild(el('div', 'ameta',
+          (e.outcome || '') + (e.code ? ' · ' + e.code : '') + (e.authority ? ' · by ' + e.authority : '')));
+        if (e.hash) div.appendChild(el('div', 'ahash', '#' + e.seq + ' ' + e.hash.slice(0, 16) + '…'));
+        if (e.reasoning) div.appendChild(el('div', 'areason', '“' + e.reasoning + '”'));
+        auditBodyEl.insertBefore(div, auditBodyEl.firstChild);
+      });
+
+      $('audit-count').textContent = auditSeen + (auditSeen === 1 ? ' call' : ' calls');
+    })
+    .catch(function () { /* the panel is an enhancement — never break the chat */ });
+}
+
+/**
+ * The tamper check. Append-only is a claim; this is how you check it.
+ * Edit any line of backend/data/audit.jsonl and this goes red, naming the
+ * record that changed.
+ */
+$('verify-btn').addEventListener('click', function () {
+  var btn = this;
+  var out = $('verify-result');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  fetch('/api/audit/verify')
+    .then(function (res) { return res.json(); })
+    .then(function (r) {
+      out.textContent = '';
+      out.className = r.valid ? 'ok' : 'bad';
+      out.appendChild(el('div', 'vtitle', r.valid
+        ? '✓ Hash chain intact — ' + r.entries + ' entries'
+        : '⚠ TAMPERED — record #' + r.brokenAt + ' failed'));
+      out.appendChild(el('div', null, r.valid
+        ? 'Every record still hashes to the one after it. Nothing has been altered since it was written.'
+        : r.detail));
+      var code = el('code', null, r.reason);
+      var wrap = el('div');
+      wrap.appendChild(code);
+      out.appendChild(wrap);
+    })
+    .catch(function (err) {
+      out.className = 'bad';
+      out.textContent = "Couldn't reach the verifier: " + err.message;
+    })
+    .then(function () {
+      btn.disabled = false;
+      btn.textContent = 'Verify chain';
+    });
+});
+
+/* ---------------- assisted conversation ---------------- */
+
+function setBusy(state) {
+  busy = state;
+  sendBtn.disabled = state;
+  document.querySelectorAll('.sugg').forEach(function (b) { b.disabled = state; });
+}
+
+function sendMessage(text) {
+  if (busy) return;
+  if (auditSession !== sessionId) resetAuditPanel(sessionId);
+  setBusy(true);
+  addBubble('user', text);
+
+  var row = addRow('agent', 'Signet');
+  var tools = el('div', 'tools');
+  tools.appendChild(makeChip('thinking…', 'running'));
+  row.appendChild(tools);
+  scrollDown();
+
+  var poll = setInterval(refreshAudit, 600);
+
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: sessionId, message: text })
+  })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      clearInterval(poll);
+      var calls = data.toolCalls || [];
+      tools.textContent = '';
+      if (calls.length) {
+        calls.forEach(function (c) { tools.appendChild(makeChip(c.tool, c.outcome)); });
+      } else if (tools.parentNode) {
+        tools.parentNode.removeChild(tools);
+      }
+
+      row.appendChild(el('div', 'bubble', data.reply || '(no reply)'));
+
+      calls.forEach(function (c) {
+        if (c.tool === 'search_catalog' && c.result && c.result.products) renderProducts(row, c.result.products);
+        if (c.outcome === 'rejected') renderGuardrail(row, c);
+      });
+      if (data.order && data.order.shortUrl) renderPayCta(row, data.order);
+
+      renderCart(data.cart, data.order);
+      return refreshAudit();
+    })
+    .catch(function (err) {
+      clearInterval(poll);
+      if (tools.parentNode) tools.parentNode.removeChild(tools);
+      row.appendChild(el('div', 'bubble',
+        "I couldn't reach the backend (" + err.message + '). Is it still running on this port?'));
+    })
+    .then(function () {
+      setBusy(false);
+      input.focus();
+      scrollDown();
+    });
+}
+
+$('composer').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendMessage(text);
+});
+
+/* ---------------- unattended run ---------------- */
+
+var selectedCategories = [];
+
+function renderCategoryPicker(categories) {
+  var wrap = $('m-cats');
+  wrap.textContent = '';
+  (categories || []).forEach(function (cat) {
+    var b = el('button', 'cat', cat);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      var i = selectedCategories.indexOf(cat);
+      if (i === -1) { selectedCategories.push(cat); b.classList.add('on'); }
+      else { selectedCategories.splice(i, 1); b.classList.remove('on'); }
+    });
+    wrap.appendChild(b);
+  });
+}
+
+function renderMandateCard(container, grant, remaining) {
+  var box = el('div', 'mandate');
+  var head = el('div', 'mhead');
+  head.appendChild(el('div', 'mtitle', 'Signed spend mandate'));
+  head.appendChild(el('div', 'mid', grant.id));
+  box.appendChild(head);
+
+  var grid = el('div', 'mgrid');
+  var cells = [
+    ['Budget', inr(grant.maxTotalPaise)],
+    ['Per order', inr(grant.maxPerOrderPaise)],
+    ['Transactions', String(grant.maxTransactions)],
+    ['Categories', grant.allowedCategories.length ? grant.allowedCategories.join(', ') : 'any'],
+    ['Expires', new Date(grant.expiresAt).toLocaleTimeString()],
+    ['On behalf of', grant.subject]
+  ];
+  cells.forEach(function (c) {
+    var cell = el('div', 'mcell');
+    cell.appendChild(el('div', 'k', c[0]));
+    cell.appendChild(el('div', 'v', c[1]));
+    grid.appendChild(cell);
+  });
+  box.appendChild(grid);
+
+  if (remaining) {
+    var used = grant.maxTotalPaise - remaining.budgetPaise;
+    var pct = grant.maxTotalPaise ? Math.min(100, (used / grant.maxTotalPaise) * 100) : 0;
+    var bar = el('div', 'bar');
+    var fill = el('i');
+    fill.style.width = pct + '%';
+    bar.appendChild(fill);
+    box.appendChild(el('div', 'k', ''));
+    box.appendChild(bar);
+    box.appendChild(el('div', 'sig',
+      'spent ' + inr(used) + ' of ' + inr(grant.maxTotalPaise) + ' · ' +
+      remaining.transactions + ' transaction(s) left'));
+  }
+
+  box.appendChild(el('div', 'sig', 'HMAC-SHA256 ' + grant.signature));
+  container.appendChild(box);
+}
+
+$('run-btn').addEventListener('click', function () {
+  var btn = this;
+  var out = $('run-output');
+  var goal = $('m-goal').value.trim();
+  if (!goal) { $('m-goal').focus(); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Running unattended…';
+  out.textContent = '';
+
+  var body = {
+    goal: goal,
+    subject: $('m-subject').value.trim() || 'Buyer',
+    maxTotalPaise: Math.round(Number($('m-total').value) * 100),
+    maxPerOrderPaise: Math.round(Number($('m-order').value) * 100),
+    maxTransactions: Number($('m-txns').value),
+    ttlMinutes: Number($('m-ttl').value),
+    allowedCategories: selectedCategories.slice()
+  };
+
+  // Follow the unattended session in the audit panel so the chain builds live.
+  var runSession = 'unattended-' + Math.random().toString(36).slice(2, 8);
+  body.sessionId = runSession;
+  resetAuditPanel(runSession);
+  var poll = setInterval(refreshAudit, 700);
+
+  fetch('/api/unattended', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      clearInterval(poll);
+      if (data.error && !data.mandate) {
+        var errBox = el('div', 'verdict stopped');
+        errBox.appendChild(el('div', 'vt', 'Run failed'));
+        errBox.appendChild(el('div', 'vb', data.error + (data.detail ? ' (' + data.detail + ')' : '')));
+        out.appendChild(errBox);
+        return;
+      }
+
+      renderMandateCard(out, data.mandate, data.remaining);
+
+      (data.steps || []).forEach(function (s) {
+        var step = el('div', 'step');
+        step.appendChild(el('div', 'sh', 'Step ' + s.step));
+        if (s.toolCalls && s.toolCalls.length) {
+          var tools = el('div', 'tools');
+          s.toolCalls.forEach(function (c) { tools.appendChild(makeChip(c.tool, c.outcome)); });
+          step.appendChild(tools);
+        }
+        if (s.reply) step.appendChild(el('div', 'bubble', s.reply));
+        (s.toolCalls || []).forEach(function (c) { if (c.outcome === 'rejected') renderGuardrail(step, c); });
+        out.appendChild(step);
+      });
+
+      var v = el('div', 'verdict ' + (data.outcome === 'purchased' ? 'purchased' : 'stopped'));
+      if (data.outcome === 'purchased') {
+        v.appendChild(el('div', 'vt', '✓ Purchased with nobody watching'));
+        v.appendChild(el('div', 'vb',
+          'The agent completed a real Razorpay test-mode payment entirely inside the mandate. ' +
+          'No human confirmed this — authority came from the signature alone.'));
+      } else {
+        v.appendChild(el('div', 'vt', '⛔ Stopped by the mandate'));
+        v.appendChild(el('div', 'vb',
+          'The agent wanted to proceed and the mandate would not authorise it. ' +
+          'With no human in the loop, this is the only thing that stopped the spend.'));
+      }
+      out.appendChild(v);
+
+      if (data.order && data.order.shortUrl) renderPayCta(out, data.order);
+      renderCart(data.cart, data.order);
+      return refreshAudit();
+    })
+    .catch(function (err) {
+      clearInterval(poll);
+      var errBox = el('div', 'verdict stopped');
+      errBox.appendChild(el('div', 'vt', 'Run failed'));
+      errBox.appendChild(el('div', 'vb', "Couldn't reach the backend: " + err.message));
+      out.appendChild(errBox);
+    })
+    .then(function () {
+      btn.disabled = false;
+      btn.textContent = 'Issue mandate & run unattended';
+    });
+});
+
+$('clear-run-btn').addEventListener('click', function () {
+  $('run-output').textContent = '';
+  resetAuditPanel(sessionId);
+});
+
+/* ---------------- growth / recovery ---------------- */
+
+$('scan-btn').addEventListener('click', function () {
+  var btn = this;
+  var out = $('growth-output');
+  btn.disabled = true;
+  btn.textContent = 'Scanning…';
+  out.textContent = '';
+
+  fetch('/api/growth/abandoned?staleAfterMinutes=' + encodeURIComponent($('g-stale').value || 0))
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      var s = data.summary || {};
+      var stats = el('div', 'stat-row');
+      [['Abandoned carts', String(s.carts || 0), ''],
+       ['Recoverable revenue', s.recoverableValue || '₹0', 'green'],
+       ['High-intent', String(s.highIntent || 0), '']].forEach(function (t) {
+        var box = el('div', 'stat ' + t[2]);
+        box.appendChild(el('div', 'k', t[0]));
+        box.appendChild(el('div', 'v', t[1]));
+        stats.appendChild(box);
+      });
+      out.appendChild(stats);
+
+      if (!data.carts || !data.carts.length) {
+        var none = el('div', 'card');
+        none.appendChild(el('div', 'empty',
+          'No abandoned carts. Build a cart in the Assisted tab without checking out, then scan again with 0 minutes.'));
+        out.appendChild(none);
+        return;
+      }
+
+      data.carts.forEach(function (c) {
+        var box = el('div', 'abandoned');
+        var head = el('div', 'ah');
+        head.appendChild(el('span', 'aid', c.sessionId));
+        head.appendChild(el('span', 'tagpill ' + c.priority, c.priority === 'high' ? 'one tap from paying' : c.stage.replace(/_/g, ' ')));
+        box.appendChild(head);
+        box.appendChild(el('div', 'aitems',
+          c.items.map(function (i) { return i.quantity + '× ' + i.name; }).join(', ') +
+          ' · idle ' + c.idleMinutes + ' min'));
+        box.appendChild(el('div', 'aval', c.recoverableValue));
+
+        var go = el('button', 'primary-btn green', 'Draft nudge & create link');
+        go.style.marginTop = '11px';
+        go.addEventListener('click', function () {
+          go.disabled = true;
+          go.textContent = 'Creating…';
+          fetch('/api/growth/recover/' + encodeURIComponent(c.sessionId), { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (r) {
+              if (r.error) {
+                box.appendChild(el('div', 'nudge', r.error));
+                return;
+              }
+              box.appendChild(el('div', 'nudge', '“' + r.nudge + '”'));
+              renderPayCta(box, { totalPaise: c.recoverableValuePaise, shortUrl: r.payUrl });
+              go.remove();
+            })
+            .catch(function (err) { box.appendChild(el('div', 'nudge', 'Failed: ' + err.message)); })
+            .then(function () { go.disabled = false; go.textContent = 'Draft nudge & create link'; });
+        });
+        box.appendChild(go);
+        out.appendChild(box);
+      });
+    })
+    .catch(function (err) {
+      out.appendChild(el('div', 'card', "Couldn't reach the backend: " + err.message));
+    })
+    .then(function () {
+      btn.disabled = false;
+      btn.textContent = 'Scan for abandoned carts';
+    });
+});
+
+/* ---------------- boot ---------------- */
+
+function renderSuggestions() {
+  var wrap = $('suggestions');
+  wrap.textContent = '';
+  SUGGESTIONS.forEach(function (text) {
+    var b = el('button', 'sugg', text);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      if (busy) return;
+      input.value = '';
+      sendMessage(text);
+    });
+    wrap.appendChild(b);
+  });
+}
+
+function showSetupBanner(missing) {
+  var banner = $('setup-banner');
+  banner.style.display = 'block';
+  banner.textContent = '';
+  banner.appendChild(document.createTextNode('⚠️ '));
+  banner.appendChild(el('strong', null, 'Setup incomplete.'));
+  banner.appendChild(document.createTextNode(' Missing in backend/.env: '));
+  missing.forEach(function (name, i) {
+    if (i) banner.appendChild(document.createTextNode(', '));
+    banner.appendChild(el('code', null, name));
+  });
+  banner.appendChild(document.createTextNode(
+    ' — Signet will still reply, but it can’t reach the model or create payment links until these are set. See docs/SETUP.md.'
+  ));
+}
+
+$('reset-btn').addEventListener('click', function () { window.location.reload(); });
+
+function boot() {
+  renderSuggestions();
+  addBubble('system', 'Session ' + sessionId + ' · every payment is a Razorpay TEST-mode link — no real money moves.');
+  addBubble('agent',
+    "Hi, I'm Signet. Tell me what you're looking for and I'll find it, price it, and take you to a payment link — with every step logged in the tamper-evident audit trail on the right.\n\nWhen you're ready for the interesting part, open the Unattended tab: that's where I buy something with nobody watching, and a signed mandate is the only thing bounding what I can spend.",
+    'Signet');
+
+  fetch('/api/health')
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      config = data;
+      var provider = data.llm || {};
+      $('pill-model').textContent = '';
+      $('pill-model').appendChild(el('code', null, provider.model || data.model || 'unknown'));
+      if (provider.label) {
+        $('pill-model').appendChild(document.createTextNode(
+          ' · ' + provider.label + (provider.free ? ' (free)' : '')));
+      }
+      if (data.guardrails) {
+        $('pill-caps').textContent = 'merchant cap: ' + inr(data.guardrails.maxOrderValueInr * 100) +
+          ' · ' + data.guardrails.maxItemQuantity + '/item';
+      }
+      renderCategoryPicker(data.categories);
+
+      var missing = [];
+      if (data.config && !data.config.llm && provider.keyEnv) missing.push(provider.keyEnv);
+      if (data.config && !data.config.razorpay) missing.push('RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET');
+      if (missing.length) showSetupBanner(missing);
+    })
+    .catch(function () { $('pill-model').textContent = 'backend offline'; });
+
+  input.focus();
+}
+
+boot();
+</script>
+</body>
+</html>
